@@ -1,0 +1,59 @@
+---
+- name: Install etcd
+  apt:
+    name: etcd
+    state: present
+    update_cache: yes
+
+- name: Create group for etcd
+  group:
+    name: etcd
+    system: yes
+
+- name: Create user for etcd
+  user:
+    name: etcd
+    group: etcd
+    system: yes
+    shell: /sbin/nologin
+
+- name: Create directories for etcd
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: etcd
+    group: etcd
+    mode: '0755'
+  loop:
+    - /var/lib/etcd/
+    - /etc/etcd
+
+- name: Put config
+  template: 
+    src: etcd.conf.j2 
+    dest: /etc/etcd/etcd.yml 
+    backup: yes
+
+- name: Delete etcd.service before copy
+  file:
+    path: /lib/systemd/system/etcd.service
+    state: absent
+
+- name: Put etcd.service systemd unit
+  template: 
+    src: etcd.service.j2
+    dest: /lib/systemd/system/etcd.service
+    backup: yes
+
+- name: Ensure cluster data is clear
+  command: rm -rf /var/lib/etcd/*
+
+- name: Reload daemon definitions
+  systemd:
+    daemon-reload: yes
+
+- name: Start and enable service
+  service: 
+    name: etcd.service 
+    state: restarted 
+    enabled: yes

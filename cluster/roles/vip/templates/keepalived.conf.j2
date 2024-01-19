@@ -1,0 +1,28 @@
+global_defs {
+   router_id {{ patroni_node_name }}
+}
+
+#Может быть ошибка, что нет killall, тогда нужно скачать пакет с ним: apt-get install psmisc 
+vrrp_script chk_haproxy {
+        script "/usr/bin/killall -0 haproxy"
+        interval 1
+        fall 2
+        rise 2
+}
+
+vrrp_instance {{ patroni_node_name }} {
+        interface eth1 # Сетевой адаптер должен быть на основном (внутренним ip) ip.
+        state BACKUP
+        virtual_router_id 150
+        nopreempt
+        priority 100
+        advert_int 1
+        track_script {
+		chk_haproxy
+
+        }
+
+        virtual_ipaddress {
+                {{ cluster_virtual_ip }}/32 dev eth1  # vip должен быть в той же подести, что и сетевой адаптер
+        }
+}        

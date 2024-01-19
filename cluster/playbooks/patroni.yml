@@ -1,0 +1,13 @@
+---
+- hosts: pgsql
+  serial: 1
+  ignore_errors: false
+  vars:
+    is_swarm: true # true if Docker Swarm mode
+
+  pre_tasks:
+    - include_tasks: tasks/postgres.yml
+
+  roles:
+    - role: 'vip'
+    - role: 'patroni'

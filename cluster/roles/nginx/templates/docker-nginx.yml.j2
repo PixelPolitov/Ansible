@@ -1,0 +1,76 @@
+{% if not is_swarm %}
+version: "3"
+services:
+  nginx:
+    image: {{ nginx_image }}
+    container_name: {{ nginx_container_name }}
+    restart: always
+    networks:
+      {{ _app_container_name }}_net:
+    ports:
+      - "{{ nginx_http_port_app }}:{{ nginx_http_port_app }}"
+      - "{{ nginx_https_port_app }}:{{ nginx_https_port_app }}"
+{% if is_zrpnet %}
+      - "{{ nginx_https_port_netA }}:{{ nginx_https_port_netA }}"
+      - "{{ nginx_https_port_netB }}:{{ nginx_https_port_netB }}"
+      - "{{ nginx_http_port_netC }}:{{ nginx_http_port_netC }}"
+{% endif %}
+    volumes:
+      - {{ _app_container_name }}:/etc/nginx/www/{{ _app_container_name }}
+      - {{ nginx_dir }}/ssl.conf:/etc/nginx/ssl.conf
+      - {{ nginx_dir }}/proxy.conf:/etc/nginx/proxy.conf
+      - {{ nginx_dir }}/nginx.conf:/etc/nginx/nginx.conf
+      - {{ nginx_dir }}/conf.d/default.conf:/etc/nginx/conf.d/default.conf
+      - {{ nginx_dir }}/ssl/mycert.crt:/etc/nginx/ssl/mycert.crt
+      - {{ nginx_dir }}/ssl/mycert.key:/etc/nginx/ssl/mycert.key
+      
+volumes:
+  {{ _app_container_name }}:
+    external: true
+networks:
+  {{ _app_container_name }}_net:
+    external: true
+{% endif %}
+{% if is_swarm %}
+version: "3.8"
+services:
+  nginx:
+    image: {{ nginx_image }}
+#    networks:
+#      nginx:
+    ports:
+      - "{{ nginx_http_port_app }}:{{ nginx_http_port_app }}"
+      - "{{ nginx_https_port_app }}:{{ nginx_https_port_app }}"
+{% if is_zrpnet %}
+      - "{{ nginx_https_port_netA }}:{{ nginx_https_port_netA }}"
+      - "{{ nginx_https_port_netB }}:{{ nginx_https_port_netB }}"
+      - "{{ nginx_http_port_netC }}:{{ nginx_http_port_netC }}"
+{% endif %}
+    volumes:
+      - {{ _app_container_name }}:/etc/nginx/www/{{ _app_container_name }}
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl.conf:/etc/nginx/ssl.conf
+      - ./proxy.conf:/etc/nginx/proxy.conf
+      - ./conf.d/default.conf:/etc/nginx/conf.d/default.conf
+      - {{ nginx_dir }}/ssl/mycert.crt:/etc/nginx/ssl/mycert.crt
+      - {{ nginx_dir }}/ssl/mycert.key:/etc/nginx/ssl/mycert.key
+	  - {{ nginx_config_dir }}/logs:/var/log/nginx
+    deploy:
+#      replicas: 2
+#      placement:
+#        max_replicas_per_node: 1
+        constraints:
+          - "node.labels.run_containers==true"
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 10s
+
+#networks:
+#  nginx:
+#    driver: overlay
+volumes:
+  {{ _app_container_name }}:
+    external: true
+{% endif %}

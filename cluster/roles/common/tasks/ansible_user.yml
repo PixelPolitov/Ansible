@@ -1,0 +1,34 @@
+---
+# Первый запуск должен быть от пользователя с правами root, т.е. от passwordless sudo > 
+# ansible-playbook -i inventories/cluster playbooks/nginx.yml -u Ansible -k
+
+- name: Создание пользователя для Ansible
+  block:
+    - name: Create a new regular user {{ created_username }} with sudo privileges
+      user:
+        name: "{{ created_username }}"
+        state: present
+        groups: sudo
+        append: true
+        create_home: true
+
+    - name: Setup passwordless sudo for {{ created_username }}
+      lineinfile:
+        path: /etc/sudoers
+        state: present
+        regexp: '^{{ created_username }}'
+        line: '{{ created_username }} ALL=(ALL) NOPASSWD: ALL'
+        validate: '/usr/sbin/visudo -cf %s'
+
+    - name: Set authorized key for remote user
+      ansible.posix.authorized_key:
+        user: "{{ created_username }}"
+        state: present
+        key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_rsa.pub') }}"
+
+    - name: Disable password authentication for root
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        state: present
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin prohibit-password'

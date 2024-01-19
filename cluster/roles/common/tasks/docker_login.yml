@@ -1,0 +1,23 @@
+---
+- name: Добавляем insecure registr в настройки Docker и логинимся в локальный Docker регистр
+  block:
+    - name: Создаем каталог docker в /etc
+      file:
+        path: /etc/docker
+        state: directory
+        mode: '0755'
+
+    - name: Копируем файл daemon.json с настройкой insecure-registries
+      template:
+        src: daemon.json
+        dest: /etc/docker/daemon.json
+      notify: Перезапуск службы Docker
+
+    - name: Flush handlers
+      meta: flush_handlers
+
+    - name: Логинимся в локальный Docker регистр
+      docker_login:
+        registry_url: 10.3.10.10:5000
+        username: repouser
+        password: repouser

@@ -1,0 +1,41 @@
+---
+- name: Install keepalived
+  apt: name=keepalived state=latest
+
+- name: Put all configuration files
+  template: 
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+    - { src: 'keepalived.conf.j2', dest: "/etc/keepalived/keepalived.conf" }
+    - { src: 'check_keepalived_status.sh', dest: "/etc/keepalived/check_keepalived_status.sh" }
+    - { src: 'check-keepalived-status.timer', dest: "/etc/systemd/system/check-keepalived-status.timer" }
+    - { src: 'check-keepalived-status.service', dest: "/etc/systemd/system/check-keepalived-status.service" }
+
+- name: Put all configuration files
+  template: 
+    src: "keepalived.conf.j2"
+    dest: "/etc/keepalived/keepalived.conf"
+
+- name: Make scripts executable
+  file:
+    path: "/etc/keepalived/{{ item }}"
+    mode: '0755'
+  loop:
+    - check_keepalived_status.sh
+
+- name: Reload daemon definitions
+  systemd:
+    daemon_reload: yes
+
+- name: Start and enable timer
+  service:
+    name: check-keepalived-status.timer
+    state: restarted
+    enabled: yes
+
+- name: Restart and enable keepalived
+  service:
+    name: keepalived
+    state: restarted
+    enabled: yes

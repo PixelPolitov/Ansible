@@ -1,0 +1,89 @@
+scope: {{ patroni_scope }}
+namespace: /cluster/
+name: {{ patroni_node_name }}
+
+restapi:
+    listen: 0.0.0.0:8008
+    connect_address: {{ ansible_host }}:8008
+    allowlist:
+     - {{ node1_ip }}/32
+     - {{ node2_ip }}/32
+    authentication:
+     username: patroni
+     password: patroni
+
+etcd3:
+    hosts: {{node1_ip}}:2379,{{node2_ip}}:2379,{{node3_ip}}:2379
+    username: root
+    password: smsit2022
+
+watchdog:
+  mode: automatic # Allowed values: off, automatic, required
+  device: /dev/watchdog
+  safety_margin: 5
+
+# this section (bootstrap) will be written into Etcd:/<namespace>/<scope>/config after initializing n># and all other cluster members will use it as a `global configuration`
+bootstrap:
+    dcs:
+        ttl: 60
+        loop_wait: 20
+        retry_timeout: 10
+        synchronous_mode: false
+        maximum_lag_on_failover: 1048576
+        postgresql:
+            remove_data_directory_on_rewind_failure: true
+            remove_data_directory_on_diverged_timelines: true
+            use_pg_rewind: true
+            use_slots: true
+            parameters:
+                    wal_level: hot_standby
+                    hot_standby: "on"
+                    wal_keep_segments: 8
+                    max_wal_senders: 10
+                    max_replication_slots: 10
+                    wal_log_hints: "on"
+
+    initdb:
+    - encoding: UTF8
+    - data-checksums
+    - locale: ru_RU.UTF-8
+    # init pg_hba.conf должен содержать адреса ВСЕХ машин, используемых в кластере
+    pg_hba:
+    - local all postgres peer
+    - host replication replicator 127.0.0.1/32 trust
+    - host replication replicator {{ subnet }}/24 md5
+    - host all all 0.0.0.0/0 md5
+
+
+postgresql:
+    listen: 0.0.0.0:5432
+    connect_address: {{ ansible_host }}:5432
+    data_dir: /opt/data/patroni
+    bin_dir:  {{ pg_bin_path }}/
+    pgpass: /tmp/pgpass
+    pg_hba:
+    - local all postgres peer
+    - host replication replicator 127.0.0.1/32 trust
+    - host replication replicator {{ subnet }}/24 md5
+    - host all all 0.0.0.0/0 md5
+    authentication:
+        replication:
+            username: "replicator"
+            password: replicator
+        superuser:
+            username: "postgres"
+            password: postgres
+        rewind:
+            username: "rewind"
+            password: rewind
+    create_replica_methods:
+        basebackup:
+            checkpoint: 'fast'
+#    parameters:
+#        unix_socket_directories: '/tmp'
+
+tags:
+    nofailover: false
+    noloadbalance: false
+    clonefrom: false
+    nosync: false

@@ -1,0 +1,11 @@
+---
+# tags: copy_nginx_configs
+
+nginx_http_port_app: '80'
+nginx_https_port_app: '443'
+nginx_server_name: '{{ ansible_hostname }}'  # if cluster mode then should use VIP dns 
+
+
+# If nginx in docker
+nginx_image: 'nginx:alpine' # by default the nginx:alpine variable is used
+nginx_container_name: 'webserver'

@@ -1,0 +1,45 @@
+# Human-readable name for this member.
+name: {{ inventory_hostname }}
+
+# Path to the data directory.
+data-dir: /var/lib/etcd
+
+# Time (in milliseconds) of a heartbeat interval.
+heartbeat-interval: 1000
+
+# Time (in milliseconds) for an election to timeout.
+election-timeout: 5000
+
+# List of comma separated URLs to listen on for peer traffic.
+listen-peer-urls: http://{{ ansible_host }}:2380
+
+# List of comma separated URLs to listen on for client traffic.
+listen-client-urls: http://{{ ansible_host }}:2379
+
+# List of this member's peer URLs to advertise to the rest of the cluster.
+# The URLs needed to be a comma-separated list.
+initial-advertise-peer-urls: http://{{ ansible_host }}:2380
+
+# List of this member's client URLs to advertise to the public.
+# The URLs needed to be a comma-separated list.
+advertise-client-urls: http://{{ ansible_host }}:2379
+
+# Initial cluster configuration for bootstrapping.
+initial-cluster: {{ cluster }}
+
+# Initial cluster token for the etcd cluster during bootstrap.
+initial-cluster-token: {{ token }}
+
+# Initial cluster state ('new' or 'existing').
+initial-cluster-state: new
+
+# Reject reconfiguration requests that would cause quorum loss.
+#strict-reconfig-check: false
+
+# Enable debug-level logging for etcd.
+log-level: debug
+
+logger: zap
+
+# Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.
+log-outputs: [stderr]

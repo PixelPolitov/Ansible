@@ -1,0 +1,6 @@
+[Unit]
+Description=Check and possibly restart keepalived based on state file
+
+[Service]
+Type=simple
+ExecStart=/etc/keepalived/check_keepalived_status.sh

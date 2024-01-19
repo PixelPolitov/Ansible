@@ -1,0 +1,5 @@
+---
+- name: Перезапуск службы Docker
+  service:
+    name: docker
+    state: restarted

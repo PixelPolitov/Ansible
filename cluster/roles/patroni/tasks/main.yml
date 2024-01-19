@@ -1,0 +1,75 @@
+---
+- name: Stop and disable {{ postgres }} 
+  service: "name={{ pg_service_name }} state=stopped enabled=no"
+
+- name: Install patroni
+  apt:
+    name: patroni
+    state: present
+    update_cache: yes
+
+- name: Add postgres to sudoers
+  lineinfile:
+    path: /etc/sudoers 
+    regexp: '^postgres'
+    line: 'postgres  ALL=(ALL)   NOPASSWD: /sbin/modprobe softdog, /bin/chown postgres /dev/watchdog'
+    validate: 'visudo -cf %s'
+  
+- name: Create dirs for patroni
+  file:
+    path: "{{ item }}"
+    owner: postgres
+    group: postgres
+    mode: '0700'
+    state: directory
+    recurse: yes
+  loop:
+    - /etc/patroni
+    - /opt/data/patroni
+  
+- name: Put postgres.yml
+  template: src=postgres.yml.j2 dest=/etc/patroni/postgres.yml backup=yes
+
+- name: Chown postgres.yml to postgres
+  file:
+    path: /etc/patroni/postgres.yml
+    owner: postgres
+    group: postgres
+    mode: '0700'
+  
+- name: Put patroni.service systemd unit
+  template: src=patroni.service dest=/etc/systemd/system/patroni.service backup=yes
+
+- name: Start watchdog
+  shell: /usr/bin/sudo /sbin/modprobe softdog && /usr/bin/sudo /bin/chown postgres /dev/watchdog
+
+- name: Add  softdog to patroni service override
+  blockinfile:
+    path: /etc/systemd/system/patroni.service.d/override.conf
+    create: yes
+    block: |
+      [Service]
+        ExecStartPre=-/usr/bin/sudo /sbin/modprobe softdog
+        ExecStartPre=-/usr/bin/sudo /bin/chown postgres /dev/watchdog
+        Environment=PATH=PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:{{ pg_bin_path }}
+        # Give a reasonable amount of time for the server to start up/shut down
+        TimeoutSec=30
+  
+- name: Reload daemon definitions
+  systemd:
+    daemon-reload: yes
+  
+- name: Restart patroni.service
+  service: name=patroni state=restarted enabled=yes
+
+- name: Current status of patroni
+  when: inventory_hostname == groups['pgsql'][1]
+  shell: sleep 5 && patronictl -c /etc/patroni/postgres.yml list
+  register: patroni_status
+  tags: patroni_status
+
+- name: Print patroni status
+  when: inventory_hostname == groups['pgsql'][1]
+  debug:
+    var: patroni_status.stdout_lines
+  tags: patroni_status

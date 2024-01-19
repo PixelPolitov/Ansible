@@ -1,0 +1,23 @@
+---
+# Если используется Ansible Semaphore в docker
+- name: Установка необходимых коллекций Ansible
+  hosts: localhost
+  gather_facts: no
+  become: true
+  become_user: semaphore
+  tasks:
+    - name: Создание каталога для ключей
+      file:
+        state: directory
+        path: /tmp/semaphore/.ssh
+
+    - name: Генерация SSH ключа RSA    
+      ansible.builtin.openssh_keypair:
+        path: "/tmp/semaphore/.ssh/id_rsa"
+        type: rsa
+        size: 2048
+
+    - name: Установить коллекции из requirements.yml
+      ansible.builtin.command:
+        cmd: ansible-galaxy collection install -r requirements.yml
+

@@ -1,0 +1,42 @@
+---
+- name: Checking extend repo for PG-14
+  command: grep -q 'astra-ce' /etc/apt/sources.list
+  register: repo_check_result
+  ignore_errors: true
+
+- name: Install extend repo for PG-14 if not present
+  shell: echo "deb https://dl.astralinux.ru/astra/stable/1.7_x86-64/repository-extended/ 1.7_x86-64 astra-ce" | sudo tee -a /etc/apt/sources.list && apt-get update
+  when: repo_check_result.rc != 0
+
+- name: Install {{ postgres }}
+  apt: 
+    name: "{{ postgres }}"
+    state: present
+    update_cache: yes
+
+- name: Set PostgreSQL user password
+  shell: psql -c "ALTER USER {{ pg_user }} WITH PASSWORD '{{ pg_pass }}';"
+  become: true
+  become_user: postgres
+
+- name: Change access in pg_hba
+  replace:
+    path: "{{ pg_hba_path }}"
+    regexp: '^host\s+all\s+all\s+127\.0\.0\.1/32\s+scram-sha-256'
+    replace: 'host    all             all             0.0.0.0/0               md5'
+    owner: postgres
+    group: postgres
+    mode: '0644'
+
+- name: Change listen address in postgesql.conf
+  blockinfile:
+    path: "{{ pg_conf_path }}"
+    block: |
+      listen_addresses = '*'
+    backup: yes
+
+- name: restart and enable {{ postgres }} 
+  service:
+    name: "{{ pg_service_name }}"
+    state: restarted
+    enabled: yes

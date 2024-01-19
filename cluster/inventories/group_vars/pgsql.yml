@@ -1,0 +1,7 @@
+---
+postgres: postgresql-14 # Postgres version. For example: postgres-11
+pg_service_name: postgresql@14-main # Postgres service. For example: postgrespro-std-14
+pg_hba_path: /etc/postgresql/14/main/pg_hba.conf
+pg_conf_path: /etc/postgresql/14/main/postgresql.conf
+pg_bin_path: /usr/lib/postgresql/14/bin # Name of folder to bin path. For example: /opt/pgpro/std-14/bin
+patroni_scope: cluster-pgsql # Name of patroni cluster

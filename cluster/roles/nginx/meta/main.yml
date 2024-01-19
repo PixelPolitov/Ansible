@@ -1,0 +1,4 @@
+---
+dependencies:
+  - name: certs
+    when: is_depend

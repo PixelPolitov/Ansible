@@ -1,0 +1,6 @@
+---
+- include_tasks: setup.yml
+- include_tasks: rsync_user.yml
+  tags: test
+
+

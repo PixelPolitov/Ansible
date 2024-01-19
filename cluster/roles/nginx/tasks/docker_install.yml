@@ -1,0 +1,24 @@
+---
+- name: Установка переменной nginx_dir
+  set_fact:
+    nginx_dir: "{{ '/opt/nginx' if is_nginx_in_docker else '/etc/nginx' }}"
+
+- name: Создание каталога nginx (docker)
+  file:
+    path: "{{ nginx_dir }}/{{ item }}"
+    state: directory
+    mode: 755
+  loop:
+    - ssl
+    - conf.d
+
+- name: Копирование docker-compose nginx
+  template:
+    src: "docker-nginx.yml.j2"
+    dest: "{{ nginx_dir }}/docker-nginx.yml"
+
+- name: Пул докер образа {{ nginx_image }}
+  docker_image:
+    name: "{{ nginx_image }}"
+    state: present
+    source: pull

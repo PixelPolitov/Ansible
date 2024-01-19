@@ -1,0 +1,21 @@
+[Unit]
+Description=Etcd Server
+After=network.target
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+WorkingDirectory=/var/lib/etcd/
+EnvironmentFile=-/etc/etcd/etcd.yml
+Type=notify
+User=etcd
+PermissionsStartOnly=true
+ExecStart=/usr/bin/etcd --config-file /etc/etcd/etcd.yml
+Restart=on-failure
+#RestartSec=10s
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+Alias=etcd2.service

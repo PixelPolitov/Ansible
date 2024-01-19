@@ -1,0 +1,15 @@
+---
+- name: Установка nginx
+  apt:
+    name: nginx
+    state: present
+  tags: install_nginx
+  
+- name: Создание каталога ssl и www для nginx
+  file:
+    path: "/etc/nginx/{{ item }}"
+    state: directory
+    mode: 755
+  loop:
+    - ssl
+    - www

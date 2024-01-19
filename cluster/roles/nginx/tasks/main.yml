@@ -1,0 +1,9 @@
+---
+- include_tasks: docker_install.yml
+  when: is_nginx_in_docker
+  tags: test
+- include_tasks: host_install.yml
+  when: not is_nginx_in_docker
+- include_tasks: copy_configs.yml
+  tags: copy_nginx_configs
+

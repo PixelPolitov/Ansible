@@ -1,0 +1,24 @@
+---
+- name: Перезапуск службы Nginx
+  when: not is_nginx_in_docker
+  service:
+    name: nginx
+    state: restarted
+
+# - name: Остановка Docker nginx
+#   when: not is_swarm or is_nginx_in_docker
+#   docker_compose:
+#    project_src: "{{ nginx_dir }}"
+#     state: absent
+
+# - name: Запуск Docker nginx
+#   when: not is_swarm or is_nginx_in_docker
+#   docker_compose:
+#     project_src: "{{ nginx_dir}}"
+
+- name: Restart nginx-docker
+  when: not is_swarm and is_nginx_in_docker
+  docker_compose:
+    project_src: "{{ nginx_dir }}"
+    restarted: yes
+    files: docker-nginx.yml

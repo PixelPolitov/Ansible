@@ -1,0 +1,6 @@
+---
+- include_tasks: ansible_user.yml
+- include_tasks: packages.yml
+- include_tasks: docker_login.yml
+
+

@@ -1,0 +1,33 @@
+---
+# - name: Создание приватного ключа, CSR и самоподписанного сертификата
+#   block:
+#     - name: Создание приватного ключа
+#       community.crypto.openssl_privatekey:
+#         path: "/etc/ssl/private/mycert.key"
+#         size: 2048
+#         mode: "0600"
+#         type: RSA
+
+#     - name: Create certificate signing request (CSR) for self-signed certificate
+#       community.crypto.openssl_csr_pipe:
+#         privatekey_path: "/etc/ssl/private/mycert.key"
+#         common_name: "{{ ansible_hostname }}"
+#         organization_name: Name, IT.
+#         # subject_alt_name:
+#         #   - "DNS:{{ ansible_hostname }}.stand.local"
+#         #   - "DNS:{{ ansible_hostname }}.sms-moscow.ru"
+#       register: csr
+
+#     - name: Создание самоподписанного сертификата
+#       community.crypto.x509_certificate:
+#         path: "/etc/ssl/certs/mycert.crt"
+#         csr_content: "{{ csr.csr }}"
+#         privatekey_path: "/etc/ssl/private/mycert.key"
+#         provider: selfsigned
+#         selfsigned_not_after: "+365d" # this is the default
+#         mode: "0644"
+
+- name: Генерация запроса на сертификат
+  shell: "echo -e 'RU\nMoscow\nMoscow\nName\nIT\n{{ _app_url }}\n\n' | openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/mycert.key -out /etc/ssl/certs/mycert.crt"
+  args:
+    creates: "/etc/ssl/private/mycert.key"

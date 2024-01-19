@@ -1,0 +1,23 @@
+---
+- hosts: etcd
+  vars:
+    is_depend: false
+
+  pre_tasks:
+    - include_tasks: tasks/ntpd.yml
+  roles:
+    - role: 'etcd'
+
+# В конце установки проверяем статус etcd кластера
+- hosts: etcd[0]
+  tasks:
+    - name: Current status of etcd
+      shell: etcdctl --write-out=table --endpoints=http://{{ node1_ip }}:2379,http://{{ node2_ip }}:2379,http://{{ node3_ip }}:2379  endpoint status
+      register: etcd_status
+      tags: etcd_status
+  
+    - name: Print etcd status
+      debug:
+        var: etcd_status.stdout_lines
+      tags: etcd_status
+      

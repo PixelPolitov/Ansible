@@ -1,0 +1,19 @@
+[etcd]
+ClusterPG-1 ansible_host=192.168.242.10
+ClusterPG-2 ansible_host=192.168.242.11
+ClusterPG-3 ansible_host=192.168.242.12
+
+[pgsql]
+ClusterPG-1 patroni_node_name=cluster_pgsql_01  ansible_host=192.168.242.10
+ClusterPG-2 patroni_node_name=cluster_pgsql_02  ansible_host=192.168.242.11
+
+[app:children]
+pgsql
+
+[all:vars]
+cluster_virtual_ip="192.168.242.20"
+cluster_virtual_dns="clusterpg"
+node1_ip="192.168.242.10"
+node2_ip="192.168.242.11"
+node3_ip="192.168.242.12"
+subnet="192.168.242.0"

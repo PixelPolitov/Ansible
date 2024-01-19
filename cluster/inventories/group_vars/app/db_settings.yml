@@ -1,0 +1,9 @@
+---
+# tags: database
+master_node: 'ClusterPG-1' # var for cluster mode
+_db_name: 'cluster_db'
+pg_user: 'postgres'
+pg_pass: 'postgres'
+pg_host: '{{ cluster_virtual_ip }}' # or cluster_virtual_ip in cluster mode
+pg_port: '5000'
+db_backup: 'db.backup'

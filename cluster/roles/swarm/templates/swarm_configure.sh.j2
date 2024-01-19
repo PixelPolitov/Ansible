@@ -1,0 +1,152 @@
+#!/bin/bash
+
+# Интерактивный скрипт для управления стэками и синхронизации докер томов между серверами кластера Docker Swarm
+
+
+# Указываем каталог для поиска
+base_directory="{{ _app_data_path }}"
+# Указываем адрес до целевого сервера синхронизации
+DEST_HOST={{ node2_ip }}
+# Сервер источник
+SOURCE_HOST={{ node1_ip }}
+# Имя докер образа
+APP_IMAGE='{{ _app_docker_image }}'
+
+{% raw %}
+# Запуск всех стэков из каталога
+swarm_delpoy() {
+    # Ищем файлы внутри каталогов с docker-*.yml
+    find "$base_directory" -type f -name "docker-*.yml" -exec sh -c 'stack_name=$(basename "$0" .yml | sed "s/docker-//"); docker stack deploy -c "$0" "$stack_name"' {} \;
+
+    # Проверим статус запущенных стэков через 5 сек, после запуска
+    sleep 5;
+	echo
+    echo -e "\e[32mСТАТУС ЗАПУЩЕННЫХ СЕРВИСОВ:\e[0m"
+    docker service ps $(docker service ls -q);
+}
+
+# Остановка\удаление запущенных стэков и их докер томов
+swarm_destroy() {
+    # Получаем список всех стеков
+    stacks=$(docker stack ls --format "{{.Name}}")
+
+    # Перебираем каждый стек и удаляем его
+    for stack in $stacks; do
+        echo -e "\e[32mУдаление стека:\e[0m $stack"
+        docker stack rm $stack
+    done
+
+    # Задаем вопрос о удалении томов с валидацией ответа
+    while true; do
+        read -p "Хотите удалить докер тома? (yes/no): " answer
+        case $answer in
+            yes)
+                echo -e "\e[32mУдаление томов\e[0m"
+                sleep 5
+                docker volume prune -f
+                break
+                ;;
+            no)
+                break
+                ;;
+            *)
+                echo "Пожалуйста, введите 'yes' или 'no'."
+                ;;
+        esac
+    done
+}
+
+# Функция для синхронизации файлов между серверами кластера Docker Swarm
+synchronize() {
+    # Получаем все IP-адреса и преобразуем их в массив
+    mapfile -t ip_array < <(ip a | grep -oP 'inet\s+\K(\d+\.\d+\.\d+\.\d+)')
+
+    # Проверяем, содержится ли SOURCE_HOST в массиве
+    if [[ ! " ${ip_array[*]} " =~ " $SOURCE_HOST " ]]; then
+        echo -e "\e[91mЭто не сервер источник!\nЗапускайте синхронизацию с $SOURCE_HOST\e[0m"
+        exit 1
+    fi
+
+    cd $base_directory
+
+    IFS=$'\n' # Устанавливаем разделитель строк в качестве IFS
+    DIRS=($(find . -maxdepth 1 -type d | grep -v '^.$' | sed 's|^\./||'))
+    VOLUMES=($(docker volume ls -q))
+
+    unset IFS # Восстанавливаем значение IFS по умолчанию
+
+    for DIR in "${DIRS[@]}"; do
+
+        if [[ " ${VOLUMES[@]} " =~ " $DIR " ]]; then
+            echo "Синхронизация Докер каталога $DIR"
+            # Синхронизация каталога www контейнеров Мастер->Реплика
+            rsync -avz --delete --update -q -e "ssh" --rsync-path="sudo rsync" /var/lib/docker/volumes/$DIR  rsync@$DEST_HOST:/var/lib/docker/volumes/
+        fi
+
+        echo "Синхронизация файлов экземляра $DIR"
+        # Синхронизация экземляров
+        rsync -avz --delete --update --exclude='*.log'--exclude='*.bak' -q -e "ssh" --rsync-path="sudo rsync" $base_directory/$DIR/  rsync@$DEST_HOST:$base_directory/$DIR/
+
+    done
+
+    echo "Синхронизация завершена."
+}
+
+# Функция обновления имени докер образа
+update_image_name() {
+    # Получение директории, где находится запущенный скрипт
+    script_directory=$(dirname "$0")
+
+    echo -e "\e[32mТекущее имя докер образа: $APP_IMAGE\e[0m"
+    echo -e "\e[32mСписок всех докер образов на сервере:\e[0m"
+
+    docker images
+
+    read -p "Введите новое имя образа: " NEW_NAME
+
+    # Проверка ввода пользователя
+    if [ -z "$NEW_NAME" ]; then
+        echo -e "\e[31mВы не ввели новое имя образа. Повторите попытку.\e[0m" >&2
+        exit 1
+    fi
+
+    find "$base_directory" -type f -name "docker-*.yml" -exec sed -i "s|image: ${APP_IMAGE}|image: ${NEW_NAME}|" {} \;
+    sed -i "s|${APP_IMAGE}|${NEW_NAME}|" ${script_directory}/swarm_configure.sh
+
+    echo -e "\e[32mИмя докер образа обновлено!\e[0m"
+}
+
+
+echo -e "\e[32mВыберите действие:\e[0m"
+
+options=("Запустить" "Остановить" "Синхронизировать" "Обновить имя образа" "Выйти")
+select opt in "${options[@]}"
+do
+    case $opt in
+        "Запустить")
+            swarm_delpoy
+            break
+            ;;
+
+        "Остановить")
+            swarm_destroy
+            break
+            ;;
+
+        "Синхронизировать")
+            synchronize
+            break
+            ;;
+			
+	    "Обновить имя образа")
+            update_image_name
+            break
+            ;;
+
+        "Выйти")
+            break
+            ;;
+        *) echo "Неверный выбор";;
+    esac
+done
+{% endraw %}

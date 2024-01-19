@@ -1,0 +1,4 @@
+---
+dependencies:
+  - name: common
+    when: is_depend

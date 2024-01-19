@@ -1,0 +1,4 @@
+---
+timezone: "Europe/Moscow"
+token: "eyJhbGciOiJIUzI1NiJ9.eyJSb2xlIjoiQWRtaW4iLCJJc3N1ZXIiOiJJc3N1ZXIiLCJVc2VybmFtZSI6InN5c2FkbWluIiwiZXhwIjoxNzAwNzI4NTIxLCJpYXQiOjE2NjkxOTI1MjF9.a0h7pR1pB2ah0oGMbKFRXBeVQZXl"
+cluster: "ClusterPG-1=http://192.168.242.10:2380,ClusterPG-2=http://192.168.242.11:2380,ClusterPG-3=http://192.168.242.12:2380"

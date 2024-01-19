@@ -1,0 +1,52 @@
+---
+- name: Initialize the cluster using docker swarm
+  when: inventory_hostname == groups['etcd'][0]
+  community.docker.docker_swarm:
+    state: present
+    advertise_addr: "{{ ansible_eth1.ipv4.address }}"
+    data_path_port: 7789
+  register: swarm_init_result
+
+- name: Set fact of join token
+  when: inventory_hostname == groups['etcd'][0]
+  set_fact:
+    join_command: "{{ swarm_init_result.swarm_facts.JoinTokens.Manager }}"
+
+- name: Add manager nodes
+  when: inventory_hostname != groups['etcd'][0]
+  community.docker.docker_swarm:
+    state: join
+    advertise_addr: "{{ ansible_eth1.ipv4.address }}"
+    join_token: "{{ hostvars[groups['etcd'][0]].join_command }}"
+    remote_addrs: [ '{{ node1_ip }}:2377' ]
+
+- name: Adding labels for restrictions. Run on primary nodes only
+  when: inventory_hostname != groups['etcd'][2]
+  community.docker.docker_node:
+    hostname: "{{ ansible_hostname }}"
+    labels:
+      key: run_containers=true
+
+- name: Create necessary directories
+  when: inventory_hostname != groups['etcd'][2]
+  file:
+    path: "{{ _app_data_path }}/scripts"
+    state: directory
+
+- name: Put configuration files
+  when: inventory_hostname != groups['etcd'][2]
+  template: 
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+    - { src: 'swarm_configure.sh.j2', dest: "{{ _app_data_path }}/scripts/swarm_configure.sh" }
+    - { src: 'spread_services.sh', dest: "{{ _app_data_path }}/scripts/spread_services.sh" }
+
+- name: Make scripts executable
+  when: inventory_hostname != groups['etcd'][2]
+  file:
+    path: "{{ _app_data_path }}/{{ item.src }}"
+    mode: '+x'
+  loop:
+    - { src: 'scripts/swarm_configure.sh', dest: "{{ _app_data_path }}/scripts/swarm_configure.sh" }
+    - { src: 'scripts/spread_services.sh', dest: "{{ _app_data_path }}/scripts/spread_services.sh" }

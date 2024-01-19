@@ -1,0 +1,65 @@
+# Создание пользователя rsync для синхронизации файлов из одного сервера на другой.
+- name: Создание пользователя {{ created_username }}
+  block:
+    - name: Create a new regular user {{ created_username }} with sudo privileges
+      when: inventory_hostname == groups['etcd'][1]
+      user:
+        name: "{{ created_username }}"
+        state: present
+        append: true
+        create_home: true
+
+    - name: Setup passwordless /usr/bin/rsync sudo for {{ created_username }}
+      when: inventory_hostname == groups['etcd'][1]
+      lineinfile:
+        path: /etc/sudoers
+        state: present
+        regexp: '^{{ created_username }}'
+        line: '{{ created_username }} ALL= NOPASSWD:/usr/bin/rsync'
+        validate: '/usr/sbin/visudo -cf %s'
+
+    - name: Create .ssh directory for root user
+      when: inventory_hostname == groups['etcd'][0]
+      file:
+        path: "/root/.ssh"
+        state: directory
+        mode: '0700'
+
+    - name: Generate SSH key for root user
+      become_user: root
+      when: inventory_hostname == groups['etcd'][0]
+      openssh_keypair:
+        path: "/root/.ssh/id_rsa"
+        state: present
+      
+    - name: Read SSH key file
+      when: inventory_hostname == groups['etcd'][0]
+      slurp:
+        path: /root/.ssh/id_rsa.pub
+      register: ssh_key_content
+
+    - name: Set fact of root key
+      when: inventory_hostname == groups['etcd'][0]
+      set_fact:
+        root_key: "{{ ssh_key_content['content'] | b64decode }}"
+
+    - name: Set authorized key
+      when: inventory_hostname == groups['etcd'][1]
+      ansible.posix.authorized_key:
+        user: rsync
+        state: present
+        key: "{{ hostvars[groups['etcd'][0]].root_key }}"
+
+
+# Не работает:
+# - name: Copy SSH key to {{ groups['etcd'][0] }}
+#   when: inventory_hostname == groups['etcd'][0]
+#   copy:
+#     content: "{{ lookup('file', '/home/' + created_username + '/.ssh/id_rsa.pub') }}"
+#     dest: "/root/.ssh/authorized_keys"
+#     owner: "root"
+#     group: "root"
+#     mode: '0600'
+#   delegate_to: "{{ groups['etcd'][1] }}"
+#   tags: test
+# Перенос паблик ключа с первого хоста от рута на второй хост на пользователя rsync

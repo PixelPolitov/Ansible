@@ -1,0 +1,19 @@
+---
+- name: Install ntp
+  apt: 
+    name: ntp 
+    state: latest
+    update_cache: yes
+
+- name: Set timezone - {{ timezone }}
+  set_fact:
+    timezone:
+      name: "{{ timezone }}"
+  tags: set_timezone
+
+- name: ntpd restart and enable
+  service:
+    name: ntp
+    state: restarted
+    enabled: yes
+

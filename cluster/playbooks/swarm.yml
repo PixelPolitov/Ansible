@@ -1,0 +1,10 @@
+---
+- hosts: etcd
+  vars:
+    is_depend: true
+
+  pre_tasks:
+    - include_tasks: tasks/ntpd.yml
+
+  roles:
+    - role: 'swarm'
